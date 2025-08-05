@@ -5,9 +5,20 @@ import seaborn as sns
 sns.set_style("darkgrid")
 import matplotlib.pyplot as plt
 from sklearn.feature_extraction.text import TfidfVectorizer
+import streamlit as st
 
 
-model = joblib.load('sentiment_model.pkl')
+@st.cache_resource
+def get_model():
+    """Returns sentiment model."""
+    model = joblib.load('sentiment_model.pkl')
+    return model
+
+@st.cache_resource
+def get_preloaded_data(file="test.csv"):
+    """Returns dataset."""
+    df = pd.read_csv(file)
+    return df
 
 
 
@@ -32,7 +43,7 @@ def validate_and_predict(model, texts, return_proba=True):
     elif not hasattr(texts, '__iter__'):
         raise ValueError("Input must be a string or list of strings.")
     
-    texts = [t.strip() for t in texts]
+    texts = [str(t).strip() for t in texts if str(t).strip() != '']
 
     if return_proba:
         return model.predict(texts), model.predict_proba(texts)
@@ -47,9 +58,9 @@ def add_preds_to_df(df, preds):
     return df
 
 def add_probs_to_df(df, probs):
-    """Attaches the model's probabilities to the original input."""
+    """Attaches the model's positive probabilities to the original input."""
     df = df.copy()
-    df['probs'] = probs
+    df['positive_prob'] = probs[:, 1]
     return df
 
 def get_class_distribution(preds):
@@ -77,7 +88,7 @@ def get_average_confidence(probs):
 
 
 def create_prob_kde(preds, probs, bw):
-    """Creates a KDE of the probabilites with adustable bandwidth."""
+    """Returns a KDE of the probabilites with adustable bandwidth."""
 
     # df of predicitons and sliced positive probs
     df = pd.DataFrame({
@@ -89,7 +100,7 @@ def create_prob_kde(preds, probs, bw):
     pos_probs_pos_pred = df.loc[df['prediction'] == 1, 'positive_prob']
     pos_probs_neg_pred = df.loc[df['prediction'] == 0, 'positive_prob']
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(1, 1)
     sns.kdeplot(pos_probs_pos_pred, fill=True, bw_adjust=bw, label='Predicted Positive', ax=ax)
     sns.kdeplot(pos_probs_neg_pred, fill=True, bw_adjust=bw, label='Predicted Negative', ax=ax)
     ax.set_xlabel('Positive Class Probility')
@@ -99,7 +110,7 @@ def create_prob_kde(preds, probs, bw):
     return fig
 
 def create_prob_hist(preds, probs, bins=30):
-    """Creates a histogram of the probabilities with adjustable bin size."""
+    """Returns a histogram of the probabilities with adjustable bin size."""
     # df of predicitons and sliced positive probs
     df = pd.DataFrame({
         'prediction': preds,
@@ -155,7 +166,7 @@ def get_top_negative_words(df, preds):
     """
     Uses TF-IDF to find words associated with low sentiment.
     Params:
-        df: input dataframe
+        df: full input dataframe, positives included
         preds: the model's predictions
     """
     df = df.copy()
