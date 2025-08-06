@@ -6,6 +6,13 @@ sns.set_style("darkgrid")
 import matplotlib.pyplot as plt
 from sklearn.feature_extraction.text import TfidfVectorizer
 import streamlit as st
+import plotly.graph_objects as go
+from scipy.stats import gaussian_kde
+from collections import defaultdict
+
+
+BLUE = '#4A90E2'
+RED = '#D46A6A'
 
 
 @st.cache_resource
@@ -88,64 +95,81 @@ def get_average_confidence(probs):
 
 
 def create_prob_kde(preds, probs, bw):
-    """Returns a KDE of the probabilites with adustable bandwidth."""
-
-    # df of predicitons and sliced positive probs
-    df = pd.DataFrame({
-        'prediction': preds,
-        'positive_prob': probs[:,1]
-    })
+    """Returns a KDE of the probabilities with adjustable bandwidth."""
+    # df of predictions and sliced positive probs
+    df = pd.DataFrame({'prediction': preds, 'positive_prob': probs[:,1]})
 
     # filter positive predictions among both classes
-    pos_probs_pos_pred = df.loc[df['prediction'] == 1, 'positive_prob']
-    pos_probs_neg_pred = df.loc[df['prediction'] == 0, 'positive_prob']
+    pos_probs_pos_pred = df.loc[df['prediction'] == 1, 'positive_prob'].values
+    pos_probs_neg_pred = df.loc[df['prediction'] == 0, 'positive_prob'].values
 
-    fig, ax = plt.subplots(1, 1)
-    sns.kdeplot(pos_probs_pos_pred, fill=True, bw_adjust=bw, label='Predicted Positive', ax=ax)
-    sns.kdeplot(pos_probs_neg_pred, fill=True, bw_adjust=bw, label='Predicted Negative', ax=ax)
-    ax.set_xlabel('Positive Class Probility')
-    ax.set_ylabel('Density')
-    ax.set_title('Model Confidence by Predicted Class')
-    ax.legend()
+    # generate evaluation points
+    x_eval = np.linspace(0, 1, 200)
+
+    # KDEs with bandwidth adjustment
+    kde_pos = gaussian_kde(pos_probs_pos_pred)
+    kde_pos.set_bandwidth(bw / kde_pos.factor)
+    kde_neg = gaussian_kde(pos_probs_neg_pred)
+    kde_neg.set_bandwidth(bw / kde_neg.factor)
+
+    y_pos = kde_pos(x_eval)
+    y_neg = kde_neg(x_eval)
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=x_eval, y=y_pos, mode='lines', fill='tozeroy', name='Predicted Positive', line_color=BLUE))
+    fig.add_trace(go.Scatter(x=x_eval, y=y_neg, mode='lines', fill='tozeroy', name='Predicted Negative', line_color=RED))
+
+    fig.update_layout(xaxis_title=' ', yaxis_title='Density', title=' ', legend=dict(title='Prediction'))
+
     return fig
+
+
 
 def create_prob_hist(preds, probs, bins=30):
     """Returns a histogram of the probabilities with adjustable bin size."""
-    # df of predicitons and sliced positive probs
-    df = pd.DataFrame({
-        'prediction': preds,
-        'positive_prob': probs[:,1]
-    })
+    # df of predictions and sliced positive probs
+    df = pd.DataFrame({'prediction': preds, 'positive_prob': probs[:,1]})
 
     # filter positive predictions among both classes
     pos_probs_pos_pred = df.loc[df['prediction'] == 1, 'positive_prob']
     pos_probs_neg_pred = df.loc[df['prediction'] == 0, 'positive_prob']
-    fig, ax = plt.subplots()
-    ax.hist(pos_probs_pos_pred, bins=bins, alpha=0.6, label='Predicted Positive', color='blue', density=True)
-    ax.hist(pos_probs_neg_pred, bins=bins, alpha=0.6, label='Predicted Negative', color='red', density=True)
-    ax.set_xlabel('Positive Class Probability')
-    ax.set_ylabel('Density')
-    ax.set_title('Model Confidence by Predicted Class')
-    ax.legend()
-    return fig
 
+    fig = go.Figure()
+    fig.add_trace(go.Histogram(x=pos_probs_pos_pred, nbinsx=bins, opacity=0.6, name='Predicted Positive', marker_color=BLUE, histnorm='probability density'))
+    fig.add_trace(go.Histogram(x=pos_probs_neg_pred, nbinsx=bins, opacity=0.6, name='Predicted Negative', marker_color=RED, histnorm='probability density'))
+
+    fig.update_layout(barmode='overlay', xaxis_title='Positive Class Probability', yaxis_title='Density', title=' ', legend=dict(title='Prediction'))
+
+    return fig
 
 
 def create_class_bar(preds):
     """Creates a bar chart showing the class distribution of predictions."""
     counts = {
-        'positive': (preds == 1).sum(),
-        'negative': (preds == 0).sum()
+        'positive': int((preds == 1).sum()),
+        'negative': int((preds == 0).sum())
     }
-    fig, ax = plt.subplots()
-    ax.bar(counts.keys(), counts.values(), color=['blue', 'red'])
-    ax.set_ylabel('Count')
-    ax.set_title('Count for Each Class')
-    # loops thru index/value and places count value above the corresponding bar
-    for i, v in enumerate(counts.values()):
-        ax.text(i, v + max(counts.values())*0.01, str(v), ha='center', va='bottom')
+
+    fig = go.Figure(go.Bar(
+        x=list(counts.keys()),
+        y=list(counts.values()),
+        marker_color=[BLUE, RED],
+        text=list(counts.values()),
+        textposition='outside'
+    ))
+
+    fig.update_layout(
+        yaxis_title='Count',
+        # extra space for labels
+        yaxis=dict(showticklabels=False, range=[0, max(counts.values()) * 1.2]),
+        margin=dict(t=60)
+    )
 
     return fig
+
+
+
+
 
 def get_tfidf(texts, n=10, max_features = 10000):
     """Creates a list of top scoring TF-IDF words. Returns a series of top words and scores."""
@@ -203,8 +227,56 @@ def filter_5th_percent(df, preds, probs):
     lower_thresh = df['positive_prob'].quantile(0.05)
     upper_thresh = df['positive_prob'].quantile(0.95)
 
-    strongest_positive_df = df[df['positive_prob'] >= upper_thresh] 
-    strongest_negative_df = df[df['positive_prob'] <= lower_thresh]
+    strongest_positive_df = df[df['positive_prob'] >= upper_thresh].reset_index(drop=True)
+    strongest_negative_df = df[df['positive_prob'] <= lower_thresh].reset_index(drop=True)
     
 
     return strongest_positive_df, strongest_negative_df
+
+
+
+def explain_predictions(model, texts, top_n=10):
+    """
+    Aggregates top contributions across texts.
+    Returns top_n words with highest absolute total contribution.
+    """
+    vectorizer = model.named_steps['tfidf']
+    clf = model.named_steps['clf']
+    coefs = clf.coef_[0]
+    feature_names = vectorizer.get_feature_names_out()
+
+    agg_contribs = defaultdict(float)
+
+    # loops thru all texts and aggregates tf-idf * clf coef to get full weight
+    for text in texts:
+        X = vectorizer.transform([text])
+        nonzero_indices = X.nonzero()[1]
+        for i in nonzero_indices:
+            agg_contribs[feature_names[i]] += X[0, i] * coefs[i]
+
+    # sort by absolute value to find top contributers
+    top_words = sorted(agg_contribs.items(), key=lambda x: abs(x[1]), reverse=True)[:top_n]
+
+    return top_words
+
+
+
+
+def plot_explanation(model, text, top_n=10):
+    """Returns a Plotly figure of top contributions."""
+    contributions = explain_predictions(model, text, top_n=10)
+    if not contributions:
+        return None
+
+    words, scores = zip(*contributions)
+    # blue for positive scores, red for negative
+    colors = [BLUE if s > 0 else RED for s in scores]
+
+    fig = go.Figure(go.Bar(x=scores, y=words, orientation='h', marker_color=colors))
+                           
+    fig.update_layout(
+        xaxis=dict(showgrid=True, gridcolor='lightgrey', zeroline=False),
+        yaxis=dict(showgrid=True, gridcolor='lightgrey', zeroline=False, autorange='reversed'),
+        plot_bgcolor='white'
+    )
+    return fig

@@ -24,7 +24,8 @@ def display_dash(df):
         st.write("Reviews Analyzed")
     with sum2:
         pos_preds = preds[preds==1]
-        st.header(f"{((len(pos_preds)/len(preds))*100):.1f}%")
+        amount_pos = (len(pos_preds)/len(preds))
+        st.header(f"{(amount_pos*100):.1f}%")
         st.write("Classified Positive")
 
     with sum3:
@@ -33,36 +34,80 @@ def display_dash(df):
         st.write("Average Confidence")
 
 
+   
+
+
+
+
+
+    # shows either the kde or the histogram
+    prediction_viz = st.radio("Confidence of prediction display: ", ["Histogram", "KDE"])
+    st.subheader("Prediction Confidence Distribution")
+
+    if prediction_viz == "Histogram":
+        st.plotly_chart(mu.create_prob_hist(preds, probs, bins=30))
+
+    if prediction_viz == "KDE":
+        bw = st.slider("Bandwidth Adjustment (KDE only)", 0.1, 2.0, 0.5, 0.1)
+        st.plotly_chart(mu.create_prob_kde(preds, probs, bw))
+
+
+
+    st.markdown("---")
+
+
     # top positive & negative reviews shown in collapsable dfs, two columns
     pos_col, neg_col = st.columns(2)
     strong_pos, strong_neg = mu.filter_5th_percent(df, preds, probs)
 
     with pos_col:
-        with st.expander("Strongest Negative Reviews"):
+        with st.expander("Show Strongest Negative Reviews"):
             st.dataframe(strong_neg[['text', 'positive_prob']].sort_values('positive_prob'))
     with neg_col:
-        with st.expander("Strongest Positive Reviews"):
+        with st.expander("Show Strongest Positive Reviews"):
             st.dataframe(strong_pos[['text', 'positive_prob']].sort_values('positive_prob', ascending=False))
 
 
-    # shows either the kde or the histogram
-    prediction_viz = st.radio("Confidence of prediction display: ", ["Histogram", "KDE"])
-    if prediction_viz == "Histogram":
-        st.pyplot(mu.create_prob_hist(preds, probs, bins=30))
 
-    if prediction_viz == "KDE":
-        bw = st.slider("Bandwidth Adjustment (KDE only)", 0.1, 2.0, 0.5, 0.1)
-        st.pyplot(mu.create_prob_kde(preds, probs, bw))
+
+    st.markdown("---")
+
+
 
 
     # shows the class balance and negative TF-IDF terms
-    display1, display2 = st.columns(2)
-    
-    with display1:
-        st.pyplot(mu.create_class_bar(preds))
+    display1, col_divide, display2 = st.columns([4, .05, 4])
 
+    col_divide.markdown(
+        """
+        <style>
+        .divider {
+            border-left: 1px solid #ddd;
+            height: 100%;
+            margin: 0 auto;
+        }
+        </style>
+        <div class="divider"></div>
+        """,
+        unsafe_allow_html=True
+    )
+ 
     with display2:
-        st.pyplot(mu.get_top_negative_words(df, preds))
+        st.subheader("Prediction Class Distribution")
+        if amount_pos > .75:
+            balance_cat = 'mostly positive'
+        if amount_pos < .25:
+            balance_cat = 'mostly negative'
+        else:
+            balance_cat = 'mixed'
+        st.write(f"*Reviews are {balance_cat}.*")
+        st.plotly_chart(mu.create_class_bar(preds))
+
+    with display1:
+        st.subheader("Key Terms Driving Predictions")
+        st.write("*Blue indicates positive influence; red indicates negative influence*")
+        st.plotly_chart(mu.plot_explanation(mu.get_model(), df['text'], top_n=10))
+        
 
 
 
