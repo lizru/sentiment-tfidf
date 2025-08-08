@@ -12,8 +12,6 @@ import model_utils as mu
 #st.set_page_config(layout="wide")
 
 
-st.write(mu.__file__)
-
 
 def display_dash(df):
     """Displays full dashboard from valid DataFrame input."""
