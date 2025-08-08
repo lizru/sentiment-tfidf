@@ -65,7 +65,7 @@ def add_preds_to_df(df, preds):
     return df
 
 def add_probs_to_df(df, probs):
-    """Attaches the model's positive probabilities to the original input."""
+    """Attaches the model's *positive* probabilities as a column to the original input. Inverse negative probabilites not included."""
     df = df.copy()
     df['positive_prob'] = probs[:, 1]
     return df
@@ -119,7 +119,7 @@ def create_prob_kde(preds, probs, bw):
     fig.add_trace(go.Scatter(x=x_eval, y=y_pos, mode='lines', fill='tozeroy', name='Predicted Positive', line_color=BLUE))
     fig.add_trace(go.Scatter(x=x_eval, y=y_neg, mode='lines', fill='tozeroy', name='Predicted Negative', line_color=RED))
 
-    fig.update_layout(xaxis_title=' ', yaxis_title='Density', title=' ', legend=dict(title='Prediction'))
+    fig.update_layout(yaxis_title='Density', legend=dict(title='Prediction'), margin=dict(t=5))
 
     return fig
 
@@ -138,7 +138,7 @@ def create_prob_hist(preds, probs, bins=30):
     fig.add_trace(go.Histogram(x=pos_probs_pos_pred, nbinsx=bins, opacity=0.6, name='Predicted Positive', marker_color=BLUE, histnorm='probability density'))
     fig.add_trace(go.Histogram(x=pos_probs_neg_pred, nbinsx=bins, opacity=0.6, name='Predicted Negative', marker_color=RED, histnorm='probability density'))
 
-    fig.update_layout(barmode='overlay', xaxis_title='Positive Class Probability', yaxis_title='Density', title=' ', legend=dict(title='Prediction'))
+    fig.update_layout(barmode='overlay', xaxis_title='Positive Class Probability', yaxis_title='Density', legend=dict(title='Prediction'), margin=dict(t=5))
 
     return fig
 
@@ -162,7 +162,7 @@ def create_class_bar(preds):
         yaxis_title='Count',
         # extra space for labels
         yaxis=dict(showticklabels=False, range=[0, max(counts.values()) * 1.2]),
-        margin=dict(t=60)
+        margin=dict(t=1)
     )
 
     return fig
@@ -277,6 +277,33 @@ def plot_explanation(model, text, top_n=10):
     fig.update_layout(
         xaxis=dict(showgrid=True, gridcolor='lightgrey', zeroline=False),
         yaxis=dict(showgrid=True, gridcolor='lightgrey', zeroline=False, autorange='reversed'),
-        plot_bgcolor='white'
+        plot_bgcolor='white',
+        margin=dict(t=5)
     )
+    return fig
+
+
+def plot_time_series(df, probs):
+    """
+    Returns fig of time-series of review sentiment probabilites.
+    Requires "date" column.
+    """
+    df['date'] = pd.to_datetime(df['date'])
+    df['probs'] = probs[:, 1]
+    
+
+    # finds mean sentiment probability by day
+    df_by_day = df.groupby(df['date'].dt.date)['probs'].mean().reset_index()
+    df_by_day['date'] = pd.to_datetime(df_by_day['date'])
+    
+    df_by_day = df_by_day[['date', 'probs']]
+    df_by_day['smoothed'] = df_by_day['probs'].rolling(window=3, center=True).mean()
+
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=df_by_day['date'], y=df_by_day['smoothed'], mode='lines', name='Avg Sentiment'))
+    fig.update_layout(xaxis_title='Date', yaxis_title='Sentiment Score (0=Negative, 1=Positive)', margin=dict(t=5))
+    fig.update_yaxes(range=[0, 1], dtick=0.1)
+    fig.add_hline(y=0.5, line_dash="dot", line_color="gray")
+
     return fig

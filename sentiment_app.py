@@ -8,12 +8,17 @@ import model_utils as mu
 
 
 
+# adjusts to fit whole page
+#st.set_page_config(layout="wide")
+
 
 
 def display_dash(df):
     """Displays full dashboard from valid DataFrame input."""
-    st.subheader("Model Predictions and Evaluations")
 
+    st.write("---")
+    st.subheader("Predictions Overview")
+    
     preds, probs = mu.validate_and_predict(mu.get_model(), df['text'])
    
 
@@ -35,24 +40,16 @@ def display_dash(df):
 
 
    
+    # shows time-series plot
+    st.subheader("Sentiment Over Time")
+    st.write("*Smoothed to reduce daily volatility; values reflect the average sentiment over the past 3 days.*")
+    st.plotly_chart(mu.plot_time_series(df, probs), use_container_width=True)
+    st.caption("Scores above 0.5 indicate positive sentiment; below 0.5 indicate negative.")
+    
+    
 
 
-
-
-
-    # shows either the kde or the histogram
-    prediction_viz = st.radio("Confidence of prediction display: ", ["Histogram", "KDE"])
-    st.subheader("Prediction Confidence Distribution")
-
-    if prediction_viz == "Histogram":
-        st.plotly_chart(mu.create_prob_hist(preds, probs, bins=30))
-
-    if prediction_viz == "KDE":
-        bw = st.slider("Bandwidth Adjustment (KDE only)", 0.1, 2.0, 0.5, 0.1)
-        st.plotly_chart(mu.create_prob_kde(preds, probs, bw))
-
-
-
+    
     st.markdown("---")
 
 
@@ -75,41 +72,41 @@ def display_dash(df):
 
 
 
-    # shows the class balance and negative TF-IDF terms
-    display1, col_divide, display2 = st.columns([4, .05, 4])
+    # class distribution/terms in cols
+    display1, extra, display2 = st.columns([3,.5,3])
 
-    col_divide.markdown(
-        """
-        <style>
-        .divider {
-            border-left: 1px solid #ddd;
-            height: 100%;
-            margin: 0 auto;
-        }
-        </style>
-        <div class="divider"></div>
-        """,
-        unsafe_allow_html=True
-    )
- 
-    with display2:
-        st.subheader("Prediction Class Distribution")
+
+    with display1:  
+        # shows bar chart of class
+        st.subheader("Class Distribution")
+        st.plotly_chart(mu.create_class_bar(preds))
         if amount_pos > .75:
             balance_cat = 'mostly positive'
         if amount_pos < .25:
             balance_cat = 'mostly negative'
         else:
             balance_cat = 'mixed'
-        st.write(f"*Reviews are {balance_cat}.*")
-        st.plotly_chart(mu.create_class_bar(preds))
+        st.caption(f"*The sentiment of reviews is {balance_cat}.*")
 
-    with display1:
-        st.subheader("Key Terms Driving Predictions")
-        st.write("*Blue indicates positive influence; red indicates negative influence*")
+    with extra:
+        st.write("")
+    # shows the top prediction drivers
+    with display2:
+        st.subheader("Key Prediction Drivers")
         st.plotly_chart(mu.plot_explanation(mu.get_model(), df['text'], top_n=10))
+        st.caption("*Blue indicates positive influence; red indicates negative influence.*")
         
+    st.write("---")
 
+    # shows either the kde or the histogram
+    st.subheader("Distribution of Model Prediction Probabilities")
+    prediction_viz = st.radio("Select view: ", ["Histogram", "KDE"])
+    if prediction_viz == "Histogram":
+        st.plotly_chart(mu.create_prob_hist(preds, probs, bins=30))
 
+    if prediction_viz == "KDE":
+        bw = st.slider("Bandwidth Adjustment (KDE only)", 0.1, 2.0, 0.5, 0.1)
+        st.plotly_chart(mu.create_prob_kde(preds, probs, bw))
 
     
 
@@ -125,7 +122,7 @@ st.sidebar.title("Navigation")
 page = st.sidebar.radio("Go to", ["Analyze Reviews", "About"])
 
 if page == "Analyze Reviews":
-    st.title("Reviews Sentiment Dashboard")
+    st.title("Customer Review Sentiment Analysis")
 
     # select type of input
     mode = st.radio("Select input method:", ["Preloaded Sample Data", "Single Review", "Upload CSV"])
@@ -138,18 +135,27 @@ if page == "Analyze Reviews":
             pred, prob = mu.validate_and_predict(mu.get_model(), text_input)
             pred_label = ('Positive' if pred[0] == 1 else 'Negative')
             confidence = prob[0][pred[0]]
-            st.write(f"**Prediction**: {pred_label} Confidence: {confidence:.2f}")
+
+            # unsure flag
+            if confidence < .6:
+                st.caption("*Low confidence: the model is uncertain about this review’s sentiment.*")
+            
+            st.write(f"**Prediction**: {pred_label}")
+            st.write(f"**Confidence**: {confidence:.0%}")
+            
+            
+
 
 
     # if mode is the preloaded dataset (Amazon test set), display full dash
     if mode == "Preloaded Sample Data":
-        df = mu.get_preloaded_data("sample.csv")
-        if df.shape[1] == 1:
-            df.columns = ['text']
+        df = mu.get_preloaded_data("sample_with_time.csv")
+        if df.shape[1] == 2:
+            df.columns = ['text', 'date']
         elif 'text' not in df.columns:
             st.error("Uploaded CSV must contain a column named 'text'.")
         else:
-            df = df[['text']]
+            df = df[['text', 'date']]
         display_dash(df)
 
     # if mode is the uploaded csv, verify input & display full dash
@@ -158,12 +164,19 @@ if page == "Analyze Reviews":
         if uploaded_file is not None:
             df = pd.read_csv(uploaded_file)
             # if one col name text, else raise error, delete other cols
-            if df.shape[1] == 1:
-                df.columns = ['text']
+            if df.shape[1] == 2:
+                df.columns = ['text', 'date']
             elif 'text' not in df.columns:
                 st.error("Uploaded CSV must contain a column named 'text'.")
             else:
-                df = df[['text']]
+                df = df[['text', 'date']]
             display_dash(df)
 
 
+
+
+if page == "About":
+    # loads markdown about file
+    with open("about.md", "r") as file:
+        about_md = file.read()
+    st.write(about_md)
