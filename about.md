@@ -28,10 +28,10 @@ The preloaded sample data is the test dataset, with synthetically generated time
 - **Performance**: ~88% accuracy on test data.
 
 ### Limitations
-- The dataset excludes neutral (e.g., 3-star) reviews, making it harder to identify neutral sentiment.
-- Predictions are limited to positive or negative classes, so subtle or mixed sentiments may not be captured.
-- The model uses TF-IDF features, which capture word importance based on the training data (Amazon product reviews). It does not perfectly reflect true sentiment nuances and may not generalize well to different domains.
+- The training dataset excludes neutral (3-star) reviews, so the model has been trained to distinguish positive and negative sentiments as a binary.
+- Because predictions are limited to positive or negative classes, subtle, neutral, or mixed sentiments may not be captured.
+- The model uses TF-IDF features, which capture word importance based on the training data (Amazon product reviews) rather than true semantic meaning. It may miss nuanced sentiment and may not generalize well to different domains.
 
 ---
 
-For more details, see the [project repository](https://github.com/lizru/sentiment-tfidf).
+For more information, see the [project repository](https://github.com/lizru/sentiment-tfidf).
