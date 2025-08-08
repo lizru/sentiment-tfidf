@@ -161,15 +161,19 @@ if page == "Analyze Reviews":
     # if mode is the uploaded csv, verify input & display full dash
     if mode == "Upload CSV":
         uploaded_file = st.file_uploader("Upload a CSV file", type=['csv'])
+        st.write("Please ensure the uploaded CSV meets one of the following:")
+        st.write("*a) Contains at least the columns 'text' and 'date' (other columns will be ignored).*")
+        st.write("*b) Exactly two columns without headers, assumed to be text and date in order.*")
+
         if uploaded_file is not None:
             df = pd.read_csv(uploaded_file)
             # if one col name text, else raise error, delete other cols
             if df.shape[1] == 2:
                 df.columns = ['text', 'date']
-            elif 'text' not in df.columns:
-                st.error("Uploaded CSV must contain a column named 'text'.")
-            else:
+            elif 'text' in df.columns and 'date' in df.columns:
                 df = df[['text', 'date']]
+            else:
+                st.error("Uploaded CSV must contain exactly two columns without headers, or columns named 'text' and 'date'.")
             display_dash(df)
 
 
