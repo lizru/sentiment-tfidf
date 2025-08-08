@@ -84,5 +84,6 @@ Logistic regression offers a strong baseline with fast training and interpretabl
 - The model relies on TF-IDF features derived from Amazon product reviews, which may not fully capture nuanced sentiment or generalize effectively to other domains or types of text.
 
 ## Usage
-- The model is available for use at reviewsentiment.streamlit.app. 
-- To run locally, install dependencies via pip install -r requirements.txt and launch the app with streamlit run sentiment_app.py.
+- The model is available for use at [reviewsentiment.streamlit.app].
+- To run locally, install dependencies via pip install -r requirements.txt and launch the app with streamlit run 'sentiment_app.py'.
+- To recreate or modify the model, run 'reviews-sentiment.ipynb' and run all cells sequentially.
