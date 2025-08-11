@@ -143,6 +143,7 @@ if page == "Analyze Reviews":
             st.write(f"**Prediction**: {pred_label}")
             st.write(f"**Confidence**: {confidence:.0%}")
         
+        st.write("---")
         with st.expander("Limitations:"):
            st.write(
             "*This model was trained on product reviews and may not generalize well to other domains, including slang or abbreviations.*"

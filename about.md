@@ -27,6 +27,8 @@ The preloaded sample data is the test dataset, with synthetically generated time
 - **Classifier**: Logistic Regression.
 - **Performance**: ~88% accuracy on test data.
 
+---
+
 ### Limitations
 - The training dataset excludes neutral (3-star) reviews, so the model has been trained to distinguish positive and negative sentiments as a binary.
 - Because predictions are limited to positive or negative classes, subtle, neutral, or mixed sentiments may not be captured.
