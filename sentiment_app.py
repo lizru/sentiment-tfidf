@@ -146,8 +146,8 @@ if page == "Analyze Reviews":
         st.write("---")
         with st.expander("Limitations:"):
            st.write(
-            "*This model was trained on product reviews and may not generalize well to other domains, including slang or abbreviations.*"
-            "*Frequent misclassifications suggest it may not be suitable for your use case.*"
+            "*This model was trained on product reviews and may not generalize well to other domains, including slang or abbreviations. "
+            "Frequent misclassifications suggest it may not be suitable for your use case.*"
         )
 
             
