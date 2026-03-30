@@ -297,7 +297,7 @@ def plot_time_series(df, probs):
     df_by_day['date'] = pd.to_datetime(df_by_day['date'])
     
     df_by_day = df_by_day[['date', 'probs']]
-    df_by_day['smoothed'] = df_by_day['probs'].rolling(window=3, center=True).mean()
+    df_by_day['smoothed'] = df_by_day['probs'].rolling(window=30, center=True).mean()
 
     
     fig = go.Figure()
