@@ -42,7 +42,7 @@ def display_dash(df):
    
     # shows time-series plot
     st.subheader("Sentiment Over Time")
-    st.write("*Smoothed to reduce daily volatility; values reflect the average sentiment over the past 3 days.*")
+    st.write("*Smoothed to reduce daily volatility; values reflect the average sentiment over the past 30 days.*")
     st.plotly_chart(mu.plot_time_series(df, probs), use_container_width=True)
     st.caption("Scores above 0.5 indicate positive sentiment; below 0.5 indicate negative.")
     
